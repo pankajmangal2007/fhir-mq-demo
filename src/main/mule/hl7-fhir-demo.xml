@@ -13,6 +13,12 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="a1f36eb4-7674-48c3-9b9d-c69aaea38b20" basePath="baseR4" >
 		<http:request-connection host="hapi.fhir.org" port="80"/>
 	</http:request-config>
+	<vm:config name="VM_Config" doc:name="VM Config" doc:id="0b459c6a-576f-4822-8085-974f84e5b94e" >
+		<vm:connection />
+		<vm:queues >
+			<vm:queue queueName="fhir-vm-que" queueType="PERSISTENT" />
+		</vm:queues>
+	</vm:config>
 	<flow name="hl7-fhir-demoFlow" doc:id="f0e90e35-713c-45c2-aaf4-575211579f7d" >
 		<http:listener doc:name="Listener" doc:id="696fe868-1281-4c47-978b-95a7b47cec8c" config-ref="HTTP_Listener_config" path="/fhir-demo"/>
 		<logger level="INFO" doc:name="Logger" doc:id="54a4366d-38ec-4d1f-beb8-471252d83165" message="Request Received"/>
@@ -23,7 +29,7 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 			</http:response-validator>
 		</http:request>
 		<logger level="INFO" doc:name="Logger" doc:id="62a3bdba-55e0-4f0b-a139-8440453fa1bc" message="Response Received: #[payload]"/>
-		<logger level="INFO" doc:name="Logger" doc:id="cc99a80c-a7ee-4989-a983-b942dd323c26" message="#[attributes.statusCode]"/>
+		<logger level="INFO" doc:name="Logger" doc:id="cc99a80c-a7ee-4989-a983-b942dd323c26" message="Status code: #[attributes.statusCode]"/>
 		<choice doc:name="Choice" doc:id="de57d669-a182-4fb0-b615-defa062f48f6" >
 			<when expression="#[attributes.statusCode == 200]">
 				<logger level="INFO" doc:name="Logger" doc:id="bc1c3fb7-e6bc-40e6-9aa2-661ff3a1eaf1" message="Success Response"/>
@@ -33,12 +39,14 @@ http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/
 			</when>
 			<otherwise >
 				<logger level="INFO" doc:name="Logger" doc:id="2561c090-4033-450a-b779-fcbcedbd4b2f" message="Error occured : "/>
-				<jms:publish doc:name="Publish" doc:id="36020b36-0cc8-48f3-b843-6d06247265d5" config-ref="JMS_Config" destination="fhir-que" priority="#['8']">
-					<jms:message >
-						<jms:body ><![CDATA[#[vars.testVar]]]></jms:body>
-					</jms:message>
-				</jms:publish>
+				<vm:publish doc:name="Publish" doc:id="bcc37cdc-c13e-47a5-b8d0-01d884a5cbd5" config-ref="VM_Config" sendCorrelationId="ALWAYS" queueName="fhir-vm-que">
+					<vm:content ><![CDATA[#[vars.testVar]]]></vm:content>
+				</vm:publish>
 			</otherwise>
 		</choice>
+	</flow>
+	<flow name="hl7-fhir-demoFlow1" doc:id="049e2df1-b040-49a3-a3f5-83d08974e056" >
+		<vm:listener queueName="fhir-vm-que" doc:name="Listener" doc:id="29e627c6-c409-48bc-b9c0-7c9accd3e62b" config-ref="VM_Config"/>
+		<logger level="INFO" doc:name="Logger" doc:id="e68167ac-46c0-483a-8ba3-04bd0628490b" message="Message Received: #[payload]"/>
 	</flow>
 </mule>
