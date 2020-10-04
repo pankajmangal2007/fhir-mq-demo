@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<jms:config name="JMS_Config" doc:name="JMS Config" doc:id="1bbe378e-38b3-4a42-972f-d96c98d6ba1e" >
+		<jms:active-mq-connection >
+			<jms:factory-configuration brokerUrl="tcp://localhost:61616" maxRedelivery="5"/>
+		</jms:active-mq-connection>
+	</jms:config>
+	<flow name="test1Flow1" doc:id="fa3ccc6f-e8d4-4bbb-9879-c113bece15fe" >
+		<jms:listener doc:name="Listener" doc:id="d0425c1f-993c-46c1-b7e7-9361732650a4" config-ref="JMS_Config" destination="fhir-que">
+			<jms:response priority="7" />
+		</jms:listener>
+		<logger level="INFO" doc:name="Logger" doc:id="74960d25-3637-417d-94e6-1a9f612fac92" message="Priority with default value : #[payload]"/>
+		<ee:transform doc:name="Transform Message" doc:id="ba5d4fa8-a018-4ad0-bc62-fd3b2b102367" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+import * from dw::Runtime
+var result = []
+output application/json
+---
+if(sizeOf(result) <= 0) fail('Data was empty') else result]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	
+</mule>

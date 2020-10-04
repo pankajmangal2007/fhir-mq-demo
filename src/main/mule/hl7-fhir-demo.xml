@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:jms="http://www.mulesoft.org/schema/mule/jms" xmlns:vm="http://www.mulesoft.org/schema/mule/vm"
+	xmlns:anypoint-mq="http://www.mulesoft.org/schema/mule/anypoint-mq"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/anypoint-mq http://www.mulesoft.org/schema/mule/anypoint-mq/current/mule-anypoint-mq.xsd
+http://www.mulesoft.org/schema/mule/vm http://www.mulesoft.org/schema/mule/vm/current/mule-vm.xsd
+http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="b6f7fcbc-1879-4700-a62e-236c5114c68b" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="a1f36eb4-7674-48c3-9b9d-c69aaea38b20" basePath="baseR4" >
+		<http:request-connection host="hapi.fhir.org" port="80"/>
+	</http:request-config>
+	<flow name="hl7-fhir-demoFlow" doc:id="f0e90e35-713c-45c2-aaf4-575211579f7d" >
+		<http:listener doc:name="Listener" doc:id="696fe868-1281-4c47-978b-95a7b47cec8c" config-ref="HTTP_Listener_config" path="/fhir-demo"/>
+		<logger level="INFO" doc:name="Logger" doc:id="54a4366d-38ec-4d1f-beb8-471252d83165" message="Request Received"/>
+		<set-variable value="#['Sample message']" doc:name="Set Variable" doc:id="f915d996-fef3-437f-8337-0b4553dcb207" variableName="testVar"/>
+		<http:request method="GET" doc:name="Request" doc:id="5093fed3-c2c3-4146-b798-f8d0c8cf4467" config-ref="HTTP_Request_configuration" path="/Patientt">
+			<http:response-validator >
+				<http:failure-status-code-validator values="#[0-99]" />
+			</http:response-validator>
+		</http:request>
+		<logger level="INFO" doc:name="Logger" doc:id="62a3bdba-55e0-4f0b-a139-8440453fa1bc" message="Response Received: #[payload]"/>
+		<logger level="INFO" doc:name="Logger" doc:id="cc99a80c-a7ee-4989-a983-b942dd323c26" message="#[attributes.statusCode]"/>
+		<choice doc:name="Choice" doc:id="de57d669-a182-4fb0-b615-defa062f48f6" >
+			<when expression="#[attributes.statusCode == 200]">
+				<logger level="INFO" doc:name="Logger" doc:id="bc1c3fb7-e6bc-40e6-9aa2-661ff3a1eaf1" message="Success Response"/>
+			</when>
+			<when expression="#[attributes.statusCode == 400]">
+				<logger level="INFO" doc:name="Logger" doc:id="6840949b-a12c-444d-a703-8b201824e456" message="Bad Request"/>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Logger" doc:id="2561c090-4033-450a-b779-fcbcedbd4b2f" message="Error occured : "/>
+				<jms:publish doc:name="Publish" doc:id="36020b36-0cc8-48f3-b843-6d06247265d5" config-ref="JMS_Config" destination="fhir-que" priority="#['8']">
+					<jms:message >
+						<jms:body ><![CDATA[#[vars.testVar]]]></jms:body>
+					</jms:message>
+				</jms:publish>
+			</otherwise>
+		</choice>
+	</flow>
+</mule>
